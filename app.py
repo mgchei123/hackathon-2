@@ -222,13 +222,13 @@ with tab_panic:
     st.header("Panic Mode — quick actions")
     col_p1, col_p2, col_p3 = st.columns(3)
     with col_p1:
-        if st.button("🌊 FLOOD (水灾)"):
+        if st.button("🌊 FLOOD "):
             st.error("⚠️ FLOOD ALERT! 1. Turn off power. 2. Move to high ground.")
     with col_p2:
-        if st.button("🔥 FIRE (火灾)"):
+        if st.button("🔥 FIRE "):
             st.error("⚠️ FIRE ALERT! 1. Stay low. 2. Do not use elevators.")
     with col_p3:
-        if st.button("🚑 MEDICAL (急救)"):
+        if st.button("🚑 MEDICAL "):
             st.error("⚠️ MEDICAL ALERT! Calling emergency contact...")
 
 # === Single Modality Analysis (original features) ===
