@@ -1,7 +1,7 @@
 import streamlit as st
 import tempfile
 import os
-from jamaibase import Jamai
+from jamaibase import JamAI
 
 # --- CONFIGURATION ---
 # REPLACE THESE WITH YOUR ACTUAL CREDENTIALS
