@@ -180,7 +180,8 @@ def _cleanup_temp(path):
 
 def send_table_row(table_id, data, stream=False):
     """
-    Insert a row using JamAI's table methods.
+    Use jamai.table.add_table_rows when available (rows as list).
+    Returns SDK response or raises informative error.
     """
     if jamai is None:
         raise RuntimeError("JamAI client not initialized.")
@@ -188,24 +189,268 @@ def send_table_row(table_id, data, stream=False):
     if table_obj is None:
         raise AttributeError("jamai.table is not present on the JamAI client instance.")
 
-    # Use the add_table_rows method if available
     if hasattr(table_obj, "add_table_rows") and callable(getattr(table_obj, "add_table_rows")):
         try:
-            return table_obj.add_table_rows(table_id=table_id, rows=[data])  # Correctly pass rows as a single argument
-        except AttributeError as e:
+            return table_obj.add_table_rows(table_id=table_id, rows=[data])
+        except TypeError:
+            return table_obj.add_table_rows(table_id, [data])
+        except Exception as e:
             raise RuntimeError(f"jamai.table.add_table_rows raised an error: {e}") from e
 
-    # Fallback to add_table_row if add_table_rows is not available
-    if hasattr(table_obj, "add_table_row") and callable(getattr(table_obj, "add_table_row")):
+    # fallback to update_table_rows or add_table_rows-like ops
+    if hasattr(table_obj, "add_table_rows") is False and hasattr(table_obj, "add_table_row"):
         try:
-            return table_obj.add_table_row(table_id=table_id, row=data)
+            f = getattr(table_obj, "add_table_row")
+            return f(table_id=table_id, row=data)
         except Exception as e:
             raise RuntimeError(f"jamai.table.add_table_row raised an error: {e}") from e
 
-    raise AttributeError("Could not find an API to insert rows on jamai.table.")
+    available = sorted(dir(table_obj))
+    raise AttributeError(f"Could not find an API to insert rows on jamai.table. Available attrs: {available}")
 
 # -----------------------
-# Main AI Assistant Tab changes
+# Main UI: Tabs (merged)
 # -----------------------
-st.header("💬 AI Assistant Improved")
-# Note: Improve assistive behavior based! 
+st.title("🚨 AERN")
+st.caption("AI Emergency Response Navigator")
+
+# Create top-level tabs:
+tab_panic, tab_single, tab_multi, tab_chat = st.tabs(["🔥 PANIC MODE", "Single Modality Analysis", "Multi-Modality Fusion", "💬 AI Assistant"])
+
+# === PANIC MODE (teammate features) ===
+with tab_panic:
+    st.header("Panic Mode — quick actions")
+    col_p1, col_p2, col_p3 = st.columns(3)
+    with col_p1:
+        if st.button("🌊 FLOOD "):
+            st.error("⚠️ FLOOD ALERT! 1. Turn off power. 2. Move to high ground.")
+    with col_p2:
+        if st.button("🔥 FIRE "):
+            st.error("⚠️ FIRE ALERT! 1. Stay low. 2. Do not use elevators.")
+    with col_p3:
+        if st.button("🚑 MEDICAL "):
+            st.error("⚠️ MEDICAL ALERT! Calling emergency contact...")
+
+# === Single Modality Analysis (original features) ===
+with tab_single:
+    st.header("Single Input Analysis (3 Dedicated Tables)")
+    st.info("Input will be sent to the table matching the input type.")
+
+    input_type = st.radio("Select Input Type", ["Text", "Audio", "Photo"], horizontal=True)
+
+    user_data = {}
+    table_id_to_use = None
+    ready_to_send = False
+
+    if input_type == "Text":
+        text_input = st.text_area("Describe the emergency situation:")
+        if text_input:
+            user_data = {"text": text_input}
+            table_id_to_use = TABLE_IDS["text"]
+            ready_to_send = True
+
+    elif input_type == "Audio":
+        audio_file = st.file_uploader("Upload Audio Recording", type=["mp3", "wav", "m4a"])
+        if audio_file:
+            temp_path = save_uploaded_file(audio_file)
+            if temp_path:
+                with st.spinner("Uploading audio..."):
+                    try:
+                        upload_resp = jamai.file.upload_file(temp_path) if jamai else None
+                        uploaded_uri = _get_uri_from_upload(upload_resp)
+                        if not uploaded_uri:
+                            st.error("Upload succeeded but no URI was returned.")
+                        else:
+                            user_data = {"audio": uploaded_uri}
+                            table_id_to_use = TABLE_IDS["audio"]
+                            ready_to_send = True
+                    except Exception as e:
+                        st.error(f"Audio upload failed: {e}")
+                    finally:
+                        _cleanup_temp(temp_path)
+
+    elif input_type == "Photo":
+        photo_file = st.file_uploader("Upload Scene Photo", type=["jpg", "png", "jpeg"])
+        if photo_file:
+            st.image(photo_file, caption="Preview", width=300)
+            temp_path = save_uploaded_file(photo_file)
+            if temp_path:
+                with st.spinner("Uploading photo..."):
+                    try:
+                        upload_resp = jamai.file.upload_file(temp_path) if jamai else None
+                        uploaded_uri = _get_uri_from_upload(upload_resp)
+                        if not uploaded_uri:
+                            st.error("Upload succeeded but no URI was returned.")
+                        else:
+                            user_data = {"photo": uploaded_uri}
+                            table_id_to_use = TABLE_IDS["photo"]
+                            ready_to_send = True
+                    except Exception as e:
+                        st.error(f"Photo upload failed: {e}")
+                    finally:
+                        _cleanup_temp(temp_path)
+
+    if st.button("Analyze Single Input", disabled=not ready_to_send):
+        with st.spinner(f"Consulting AERN Brain via table: {table_id_to_use}..."):
+            try:
+                if jamai:
+                    response = send_table_row(table_id=table_id_to_use, data=user_data, stream=False)
+                else:
+                    response = {"row": {"description": "Simulated description (offline)", "summary": "Simulated summary"}}  # fallback for offline
+                with st.expander("Raw response from JamAI"):
+                    st.write(response)
+                row = _find_row_dict(response)
+                desc = _extract_field_safe(row, "description", default="No description generated")
+                summary = _extract_field_safe(row, "summary", default="No summary generated")
+                st.subheader("📋 Situation Description")
+                st.write(desc)
+                st.divider()
+                st.subheader("📢 Action Summary")
+                st.success(summary)
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
+                st.write("Check Table IDs and column names. If needed, expand the JamAI debug info in the sidebar.")
+
+# === Multi-Modality Fusion (original features) ===
+with tab_multi:
+    st.header("Multi-Modality Fusion")
+    st.info(f"Connected to Table: `{TABLE_IDS['multi']}` (One table handles multiple inputs)")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        multi_text = st.text_area("Text Input", height=150)
+        multi_audio = st.file_uploader("Audio Input", type=["mp3", "wav", "m4a"], key="m_audio")
+    with col2:
+        multi_photo = st.file_uploader("Photo Input", type=["jpg", "png", "jpeg"], key="m_photo")
+        if multi_photo:
+            st.image(multi_photo, width=200)
+
+    if st.button("Analyze Combined Data"):
+        if not (multi_text or multi_audio or multi_photo):
+            st.error("Please provide at least one input.")
+        else:
+            with st.spinner("Processing multi-modal emergency data..."):
+                try:
+                    multi_data = {}
+                    if multi_text:
+                        multi_data["text"] = multi_text
+                    if multi_audio:
+                        temp_audio = save_uploaded_file(multi_audio)
+                        if temp_audio:
+                            try:
+                                upload_audio = jamai.file.upload_file(temp_audio) if jamai else None
+                                uri_audio = _get_uri_from_upload(upload_audio)
+                                if uri_audio:
+                                    multi_data["audio"] = uri_audio
+                                else:
+                                    st.warning("Audio uploaded but no uri returned.")
+                            except Exception as e:
+                                st.error(f"Audio upload failed: {e}")
+                            finally:
+                                _cleanup_temp(temp_audio)
+                    if multi_photo:
+                        temp_photo = save_uploaded_file(multi_photo)
+                        if temp_photo:
+                            try:
+                                upload_photo = jamai.file.upload_file(temp_photo) if jamai else None
+                                uri_photo = _get_uri_from_upload(upload_photo)
+                                if uri_photo:
+                                    multi_data["photo"] = uri_photo
+                                else:
+                                    st.warning("Photo uploaded but no uri returned.")
+                            except Exception as e:
+                                st.error(f"Photo upload failed: {e}")
+                            finally:
+                                _cleanup_temp(temp_photo)
+
+                    if jamai:
+                        response = send_table_row(table_id=TABLE_IDS["multi"], data=multi_data, stream=False)
+                    else:
+                        response = {"row": {"description": "Simulated integrated description (offline)", "summary": "Simulated strategic summary"}}
+                    with st.expander("Raw response from JamAI (multi)"):
+                        st.write(response)
+                    row = _find_row_dict(response)
+                    desc = _extract_field_safe(row, "description", default="No description generated")
+                    summary = _extract_field_safe(row, "summary", default="No summary generated")
+                    st.subheader("📋 Integrated Description")
+                    st.write(desc)
+                    st.divider()
+                    st.subheader("📢 Strategic Summary")
+                    st.success(summary)
+                except Exception as e:
+                    st.error(f"An error occurred during fusion: {e}")
+
+# === AI Assistant (teammate chat feature, merged) ===
+with tab_chat:
+    st.header("AI Assistant")
+    st.info("Type a message below. If JamAI is configured, it will be sent to the configured chat/table; otherwise a simulated reply is shown.")
+
+    # Use chat table id from secrets or fallback to multi table
+    CHAT_TABLE_ID = TABLE_IDS.get("chat", TABLE_IDS["multi"])
+
+    # Display simple chat history in session_state
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    # Render previous messages
+    for msg in st.session_state.chat_history:
+        role = msg.get("role", "user")
+        content = msg.get("content", "")
+        st.chat_message(role).write(content)
+
+    # Chat input
+    prompt = st.chat_input("Apa jadi? Type here...")
+    if prompt:
+        # show user message
+        st.session_state.chat_history.append({"role": "user", "content": prompt})
+        st.chat_message("user").write(prompt)
+
+        # Prepare data row to send - adjust column name 'text' to match your table
+        data = {"text": prompt}
+
+        with st.spinner("Contacting AI assistant..."):
+            try:
+                if jamai:
+                    # send as a table row to the chat/table (JamAI expects rows list)
+                    response = send_table_row(table_id=CHAT_TABLE_ID, data=data, stream=False)
+                else:
+                    response = {"row": {"description": None, "summary": None, "assistant_reply": f"Simulated reply: {prompt}"}}
+
+                # show raw response for debugging
+                with st.expander("Raw response from JamAI (chat)"):
+                    st.write(response)
+
+                row = _find_row_dict(response)
+                # prefer assistant_reply, then summary, then description
+                assistant_text = _extract_field_safe(row, "assistant_reply")
+                if not assistant_text:
+                    assistant_text = _extract_field_safe(row, "summary")
+                if not assistant_text:
+                    assistant_text = _extract_field_safe(row, "description")
+                if not assistant_text:
+                    assistant_text = "No assistant reply returned."
+
+                # append and show assistant message
+                st.session_state.chat_history.append({"role": "assistant", "content": assistant_text})
+                st.chat_message("assistant").write(assistant_text)
+            except Exception as e:
+                st.error(f"Chat failed: {e}")
+                # fallback simulated reply
+                sim = f"Simulated reply due to error: {str(e)}"
+                st.session_state.chat_history.append({"role": "assistant", "content": sim})
+                st.chat_message("assistant").write(sim)
+
+# -----------------------
+# Sidebar: JamAI debug info
+# -----------------------
+with st.sidebar.expander("JamAI debug info / Table API"):
+    if jamai is None:
+        st.write("JamAI client not initialized.")
+    else:
+        table_obj = getattr(jamai, "table", None)
+        st.write("jamai.table type:", type(table_obj))
+        if table_obj is not None:
+            st.write(sorted(dir(table_obj)))
+        st.write("Project ID:", PROJECT_ID)
+        st.write("Table IDs (resolved):", TABLE_IDS)
+
