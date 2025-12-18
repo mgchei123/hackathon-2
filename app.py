@@ -1,3 +1,4 @@
+import random
 import streamlit as st
 import tempfile
 import os
@@ -528,8 +529,8 @@ with tab_emergency:
 # TAB 2: MULTI-MODALITY FUSION
 # =============================================================================
 with tab_multi: 
-    st.header("🔀 Multi-Modality Fusion")
-    st.info(f"Combine multiple inputs for comprehensive analysis (Table:  {TABLE_IDS['multi']})")
+    st.header("What's Happening? 🔀 ")
+    st.info(f"Combine multiple inputs for analysis (Table:  {TABLE_IDS['multi']})")
     
     col1, col2 = st. columns(2)
     
@@ -550,7 +551,7 @@ with tab_multi:
         if multi_photo: 
             st.image(multi_photo, caption="Preview", width=200)
     
-    if st.button("🔀 Analyze Combined Data", use_container_width=True):
+    if st.button("🔀 Let's me help you", use_container_width=True):
         if not (multi_text or multi_audio or multi_photo):
             st.error("Please provide at least one input")
         else:
@@ -590,7 +591,16 @@ with tab_multi:
             
             # Submit to JamAI
             if multi_data: 
-                with st.spinner("Processing multi-modal data..."):
+                messages = [
+                    "Preparing your situation overview…",
+                    "Identifying risks and next steps…",
+                    "Checking details to keep you safe…",
+                    "Creating your safety plan…",
+                    "We’re reviewing your info to help right now…"
+                ]
+                with st.spinner(random.choice(messages)):
+                    time.sleep(2)
+
                     try:
                         if jamai_client: 
                             response = add_table_row(TABLE_IDS["multi"], multi_data)
