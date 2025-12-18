@@ -8,7 +8,7 @@ from jamaibase.protocol import MultiRowAddRequest
 # =============================================================================
 # PAGE CONFIGURATION
 # =============================================================================
-st. set_page_config(
+st.set_page_config(
     page_title="AERN | AI Emergency Response Navigator",
     page_icon="🚨",
     layout="wide"
@@ -34,7 +34,7 @@ st.markdown("""
         padding: 20px;
         border-radius: 15px;
         font-size: 24px;
-        font-weight:  bold;
+        font-weight: bold;
         margin:  10px;
     }
 </style>
@@ -83,8 +83,8 @@ def load_secrets():
         "tables": {
             "text": table_text_id,
             "audio": table_audio_id,
-            "photo":  table_photo_id,
-            "multi": table_multi_id,
+            "photo": table_photo_id,
+            "multi":  table_multi_id,
             "chat": table_chat_id
         }
     }
@@ -115,9 +115,9 @@ else:
 def save_uploaded_file(uploaded_file):
     """Save uploaded file to temporary location"""
     try:
-        suffix = f".{uploaded_file.name. split('.')[-1]}" if "." in uploaded_file.name else ""
+        suffix = f".{uploaded_file.name.split('.')[-1]}" if "." in uploaded_file.name else ""
         with tempfile. NamedTemporaryFile(delete=False, suffix=suffix) as tmp_file:
-            tmp_file. write(uploaded_file.getvalue())
+            tmp_file.write(uploaded_file.getvalue())
             return tmp_file.name
     except Exception as e:
         st.error(f"Error saving file: {e}")
@@ -149,13 +149,13 @@ def parse_response_data(response):
         return {}
     
     # Handle list responses
-    if isinstance(response, list) and response:  
+    if isinstance(response, list) and response:
         response = response[0]
     
     # Handle dict responses
     if isinstance(response, dict):
         # Check for common patterns
-        if "row" in response:  
+        if "row" in response:
             return parse_response_data(response["row"])
         if "rows" in response and isinstance(response["rows"], list) and response["rows"]:
             return parse_response_data(response["rows"][0])
@@ -203,46 +203,65 @@ def parse_columns_data(columns):
     
     return result
 
+def extract_chat_completion_content(value):
+    """Extract content from ChatCompletion object or dict"""
+    # If value is a ChatCompletion object, extract the content
+    if hasattr(value, "choices") and value.choices:
+        try:
+            return value.choices[0].message.content
+        except (AttributeError, IndexError):
+            pass
+    
+    # If value is a dict with ChatCompletion structure
+    if isinstance(value, dict) and "choices" in value: 
+        try:
+            choices = value["choices"]
+            if isinstance(choices, list) and choices:
+                first_choice = choices[0]
+                if isinstance(first_choice, dict) and "message" in first_choice:
+                    return first_choice["message"]. get("content")
+                elif hasattr(first_choice, "message"):
+                    return first_choice. message.content
+        except (AttributeError, IndexError, KeyError):
+            pass
+    
+    # If it's already a string, return it
+    if isinstance(value, str):
+        return value if value else None
+    
+    # Convert to string if needed
+    return str(value) if value is not None else None
+
 def get_field_value(data, field_name, default=None):
-    """Safely extract field value from response data"""
+    """Safely extract field value from response data with comprehensive search"""
     if not isinstance(data, dict):
         return default
     
     # Direct lookup
     if field_name in data:
         value = data[field_name]
-        
-        # If value is a ChatCompletion object, extract the content
-        if hasattr(value, "choices") and value.choices:
-            try:
-                return value.choices[0].message.content
-            except (AttributeError, IndexError):
-                pass
-        
-        # If value is a dict with ChatCompletion structure
-        if isinstance(value, dict) and "choices" in value:
-            try:  
-                choices = value["choices"]
-                if isinstance(choices, list) and choices:
-                    first_choice = choices[0]
-                    if isinstance(first_choice, dict) and "message" in first_choice:
-                        return first_choice["message"]. get("content")
-                    elif hasattr(first_choice, "message"):
-                        return first_choice.message.content
-            except (AttributeError, IndexError, KeyError):
-                pass
-        
-        # If it's already a string, return it
-        if isinstance(value, str):
-            return value if value else default
-        
-        # Convert to string if needed
-        return str(value) if value is not None else default
+        extracted = extract_chat_completion_content(value)
+        return extracted if extracted else default
+    
+    # Try alternative field names (case-insensitive and with variations)
+    alternative_names = [
+        field_name.lower(),
+        field_name.upper(),
+        field_name.replace("_", " "),
+        field_name.replace(" ", "_"),
+    ]
+    
+    for key, value in data.items():
+        if key.lower() in [name.lower() for name in alternative_names]:
+            extracted = extract_chat_completion_content(value)
+            return extracted if extracted else default
     
     # Recursive search for nested structures
     for key, value in data.items():
-        if isinstance(value, dict) and field_name in value:
-            return get_field_value({"field": value[field_name]}, "field", default)
+        if isinstance(value, dict):
+            result = get_field_value(value, field_name, None)
+            if result is not None:
+                return result
     
     return default
 
@@ -299,7 +318,7 @@ def get_table_schema(table_id):
 st.title("🚨 AERN - AI Emergency Response Navigator")
 st.markdown("""
 **AI-Powered Emergency Response System** — AERN uses advanced AI to analyze emergency situations 
-in real-time through text, audio, and images.  Get instant situational assessments, 
+in real-time through text, audio, and images. Get instant situational assessments, 
 recommended actions, and connect with emergency services faster. 
 """)
 
@@ -319,7 +338,7 @@ with st.sidebar:
     # Table IDs
     with st.expander("📋 Table Configuration", expanded=False):
         st.write("**Configured Table IDs:**")
-        for key, value in TABLE_IDS. items():
+        for key, value in TABLE_IDS.items():
             st.code(f"{key}: {value}")
     
     # List available tables
@@ -441,7 +460,7 @@ with tab_emergency:
             if emergency_audio or emergency_photo:
                 # Use multi-modal table
                 table_id = TABLE_IDS["multi"]
-                st.info(f"Using multi-modal table: {table_id}")
+                st.info(f"Using multi-modal table:  {table_id}")
                 
                 emergency_data = {}
                 
@@ -494,16 +513,17 @@ with tab_emergency:
                             # Display results
                             st.success("✅ Emergency Report Processed")
 
-                            description = get_field_value(data, "description", "No description available")
-                            summary = get_field_value(data, "summary", "No summary available")
+                            # Use correct field names from the API
+                            description = get_field_value(data, "input_summary", "No description available")
+                            summary = get_field_value(data, "diagonise", "No summary available")
 
                             st.subheader("📋 Situation Assessment")
-                            st.markdown(f"**{description}**")
+                            st.markdown(description)
 
                             st.divider()
 
                             st.subheader("🚨 Recommended Actions")
-                            st.warning(summary)  # Changed from st.info to st.warning for urgency
+                            st.warning(summary)
 
                             # Optional: Add action buttons based on the analysis
                             col1, col2, col3 = st.columns(3)
@@ -519,7 +539,7 @@ with tab_emergency:
                                 st.json(data)
                         else: 
                             st.error("JamAI client not available")
-                    except Exception as e: 
+                    except Exception as e:
                         st.error(f"Error processing emergency:  {e}")
             else:
                 st.warning("Please provide emergency details")
@@ -531,7 +551,7 @@ with tab_multi:
     st.header("🔀 Multi-Modality Fusion")
     st.info(f"Combine multiple inputs for comprehensive analysis (Table: {TABLE_IDS['multi']})")
     
-    col1, col2 = st.columns(2)
+    col1, col2 = st. columns(2)
     
     with col1:
         multi_text = st.text_area("Text Description:", height=150)
@@ -599,8 +619,9 @@ with tab_multi:
                             # Display results
                             st.success("✅ Multi-Modal Analysis Complete")
 
-                            description = get_field_value(data, "description", "No description available")
-                            summary = get_field_value(data, "summary", "No summary available")
+                            # Use correct field names from the API
+                            description = get_field_value(data, "input_summary", "No description available")
+                            summary = get_field_value(data, "diagonise", "No summary available")
 
                             # Create a more visual layout
                             st.markdown("### 🔍 Integrated Analysis")
@@ -610,21 +631,21 @@ with tab_multi:
 
                             with col1:
                                 st.markdown("#### 📋 Situation Assessment")
-                                st.info(description)
+                                st. info(description)
                                 
                                 st.markdown("#### 🚨 Safety Recommendations")
                                 st.warning(summary)
 
                             with col2:
                                 st.markdown("#### 📊 Analysis Summary")
-                                st.metric("Input Types", len([k for k in multi_data. keys()]))
+                                st.metric("Input Types", len([k for k in multi_data.keys()]))
                                 st.metric("Confidence", "High ✅")
                                 st.button("📞 Emergency Services", type="primary", use_container_width=True)
                                 st.button("📍 Share Location", use_container_width=True)
 
                             with st.expander("🔧 Debug Information"):
                                 st.json(data)
-                        else:
+                        else: 
                             st.error("JamAI client not available")
                     except Exception as e:
                         st.error(f"Multi-modal analysis error: {e}")
@@ -632,7 +653,7 @@ with tab_multi:
 # =============================================================================
 # TAB 3: AI CHAT ASSISTANT
 # =============================================================================
-with tab_chat: 
+with tab_chat:  
     st.header("💬 AI Chat Assistant")
     st.info("Ask questions and get real-time guidance from the AI assistant")
     
@@ -641,7 +662,7 @@ with tab_chat:
         st. session_state.chat_history = []
     
     # Display chat history
-    for msg in st.session_state.chat_history: 
+    for msg in st.session_state.chat_history:  
         role = msg. get("role", "user")
         content = msg.get("content", "")
         with st.chat_message(role):
@@ -658,8 +679,8 @@ with tab_chat:
         with st.chat_message("user"):
             st.write(user_message)
         
-        # Prepare data for JamAI
-        chat_data = {"chat":  user_message}
+        # Prepare data for JamAI (input column is "chat")
+        chat_data = {"chat": user_message}
         
         # Get AI response
         with st.spinner("Thinking..."):
@@ -668,13 +689,8 @@ with tab_chat:
                     response = add_table_row(TABLE_IDS["chat"], chat_data)
                     data = parse_response_data(response)
                     
-                    # Extract assistant reply
-                    assistant_reply = (
-                        get_field_value(data, "assistant_reply") or
-                        get_field_value(data, "summary") or
-                        get_field_value(data, "description") or
-                        "I'm sorry, I couldn't generate a response."
-                    )
+                    # Extract assistant reply from the "output" column
+                    assistant_reply = get_field_value(data, "output", "I'm sorry, I couldn't generate a response.")
                     
                     # Add to history
                     st.session_state.chat_history.append({
@@ -688,9 +704,9 @@ with tab_chat:
                     
                     # Debug info
                     with st.expander("🔍 Debug Data"):
-                        st.write(response)
+                        st.json(data)
                 else:
-                    error_msg = "JamAI client not available.  Please configure credentials."
+                    error_msg = "JamAI client not available. Please configure credentials."
                     st.session_state.chat_history.append({
                         "role": "assistant",
                         "content": error_msg
@@ -701,7 +717,7 @@ with tab_chat:
                 error_msg = f"Error:  {e}"
                 st.session_state.chat_history.append({
                     "role": "assistant",
-                    "content": error_msg
+                    "content":  error_msg
                 })
                 with st.chat_message("assistant"):
                     st.error(error_msg)
@@ -709,5 +725,5 @@ with tab_chat:
 # =============================================================================
 # FOOTER
 # =============================================================================
-st. divider()
+st.divider()
 st.caption("🚨 AERN - AI Emergency Response Navigator | Powered by Insomniac")
