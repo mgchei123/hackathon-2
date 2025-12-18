@@ -102,7 +102,6 @@ jamai_client = None
 if API_KEY and PROJECT_ID:
     try:
         jamai_client = JamAI(token=API_KEY, project_id=PROJECT_ID)
-        st.sidebar.success("✅ Connected to JamAI")
     except Exception as e:
         st.sidebar.error(f"❌ JamAI Connection Failed: {e}")
         jamai_client = None
