@@ -14,23 +14,6 @@ st.set_page_config(
     page_icon="🚨",
     layout="wide"
 )
-st.markdown("""
-    <style>
-        /* 隐藏顶部所有的按钮 (Manage app, Fork, Deploy) */
-        [data-testid="stHeaderActionElements"] {
-            display: none !important;
-        }
-        
-        /* 如果你想连右上角的三个点(菜单)也藏起来，解开下面这行的注释 */
-        /* [data-testid="stToolbar"] { visibility: hidden !important; } */
-        
-        /* 隐藏底部的 Made with Streamlit */
-        footer {
-            visibility: hidden !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
-
 
 # Custom CSS for emergency response theme
 st.markdown("""
