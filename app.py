@@ -199,7 +199,7 @@ def add_table_row(table_id, row_data):
         raise RuntimeError("JamAI client not initialized")
     
     try:
-        # Use modern JamAI SDK pattern
+        # Try with 'data' parameter first (newer SDK versions)
         response = jamai_client.table.add_table_rows(
             table_type="action",
             table_id=table_id,
@@ -207,6 +207,18 @@ def add_table_row(table_id, row_data):
             stream=False
         )
         return response
+    except TypeError:
+        # Fallback to 'rows' parameter for compatibility with older SDK versions
+        try:
+            response = jamai_client.table.add_table_rows(
+                table_type="action",
+                table_id=table_id,
+                rows=[row_data],
+                stream=False
+            )
+            return response
+        except Exception as e:
+            raise RuntimeError(f"Failed to add table row: {e}")
     except Exception as e:
         raise RuntimeError(f"Failed to add table row: {e}")
 
@@ -425,6 +437,7 @@ with tab_emergency:
                 # Use text-only table
                 table_id = TABLE_IDS["text"]
                 st.info(f"Using text table: {table_id}")
+                # Note: text_received table uses 'text_receive' column, different from combined table's 'text' column
                 emergency_data = {"text_receive": f"[{emergency_selected}] {emergency_text}"}
             
             # Submit to JamAI
@@ -500,6 +513,7 @@ with tab_single:
         
         if input_type == "Text":
             if text_input:
+                # Note: text_received table uses 'text_receive' column
                 single_data = {"text_receive": text_input}
                 table_id = TABLE_IDS["text"]
                 ready_to_submit = True
