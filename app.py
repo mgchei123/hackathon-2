@@ -454,28 +454,32 @@ with tab_emergency:
 # =============================================================================
 with tab_multi: 
     st.header("What's Happening? 🔀 ")
-    st.info(f"Combine multiple inputs for analysis (Table:  {TABLE_IDS['multi']})")
+    st.info(f"You can provide multiple inputs (text, audio, photo) for situation analysis.")
     
     col1, col2 = st. columns(2)
     
     with col1:
-        multi_text = st.text_area("Text Description:", height=150)
+        multi_text = st.text_area("**Describe** the situation (Text)", height=150,
+                                  placeholder="Example: I see black smoke coming from the Computer Science building, and the fire alarm is ringing..."
+        )
+        
         multi_audio = st.file_uploader(
-            "Audio Input:",
+            "Audio Input (Optional):",
             type=["mp3", "wav", "m4a"],
+            help="Upload a voice recording describing the scene.",
             key="multi_audio"
         )
     
     with col2:
         multi_photo = st.file_uploader(
-            "Photo Input:",
+            "Upload evidence (Optional):",
             type=["jpg", "png", "jpeg"],
             key="multi_photo"
         )
         if multi_photo: 
             st.image(multi_photo, caption="Preview", width=200)
     
-    if st.button("🔀 Let us help you", use_container_width=True):
+    if st.button("Click here to get an immediate escape plan.", use_container_width=True):
         if not (multi_text or multi_audio or multi_photo):
             st.error("Please provide at least one input")
         else:
@@ -638,4 +642,37 @@ with tab_chat:
 # FOOTER
 # =============================================================================
 st.divider()
-st.caption("🚨 AERN - AI Emergency Response Navigator | Powered by Insomniac")
+st.markdown("""
+    <style>
+        .footer-text {
+            text-align: center;
+            color: #888; /* 灰色，在黑白背景都看得清 */
+            font-size: 12px;
+            padding-bottom: 20px;
+        }
+        .disclaimer-box {
+            /* 关键修改：使用 rgba 透明度 */
+            /* 红色背景，但在黑色底色上只会显出淡淡的红光 */
+            background-color: rgba(255, 80, 80, 0.1); 
+            
+            /* 边框让它更有科技感 */
+            border: 1px solid rgba(255, 80, 80, 0.3);
+            
+            /* 文字颜色：使用亮红色/粉色，在深色背景下更容易阅读 */
+            color: #ff8a80;
+            
+            padding: 10px;
+            border-radius: 8px;
+            display: inline-block;
+            max-width: 600px;
+        }
+    </style>
+    
+    <div class="footer-text">
+        <p>🚨 <b>AERN - AI Emergency Response Navigator</b> | Powered by Insomniac</p>
+        <div class="disclaimer-box">
+            ⚠️ <b>DISCLAIMER:</b> This system is a prototype for demonstration only. <br>
+            AI responses may be inaccurate. In real life-threatening situations, <b>ALWAYS CALL 999</b>.
+        </div>
+    </div>
+""", unsafe_allow_html=True)
