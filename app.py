@@ -16,33 +16,117 @@ st.set_page_config(
 )
 
 # =============================================================================
-# UI DESIGN & CSS (FORCE VERSION)
+# UI DESIGN & CSS (ADAPTIVE THEME)
 # =============================================================================
 st.markdown("""
 <style>
-    /* 1. 强制修改全局背景颜色 */
-    .stApp {
-        background-color: #faf5f5 !important; /* 加了 !important 强制变红 */
+    /* LIGHT MODE (default) */
+    @media (prefers-color-scheme: light) {
+        .stApp {
+            background-color: #faf5f5 !important;
+        }
+        
+        /* Main content area - REMOVED SPACE */
+        .main . block-container {
+            background-color: #faf5f5 !important;
+        }
+        
+        /* Tabs styling - REMOVED SPACES */
+        .stTabs [data-baseweb="tab-list"] {
+            background-color: #faf5f5 ! important;
+        }
+        
+        .stTabs [data-baseweb="tab-panel"] {
+            background-color: #faf5f5 !important;
+        }
+        
+        h1, h2, h3 {
+            color: #d32f2f !important;
+        }
+        
+        .stButton>button {
+            background-color: white !important;
+            color: #333 !important;
+            border: 2px solid #ffcccc ! important;
+        }
+        
+        .stChatMessage {
+            background-color: #ffffff !important;
+            border: 1px solid #ffcccc !important;
+            color: #333333 !important;
+        }
+        
+        .stChatMessage [data-testid="stMarkdownContainer"] {
+            color: #333333 !important;
+        }
+        
+        /* Text areas and inputs */
+        .stTextArea textarea, .stTextInput input {
+            background-color: white !important;
+            color: #333 ! important;
+        }
+        
+        /* Info, warning, success boxes */
+        .stAlert {
+            background-color: #ffffff !important;
+        }
     }
     
-    /* 2. 标题颜色 */
-    h1, h2, h3 {
-        color: #d32f2f !important;
+    /* DARK MODE */
+    @media (prefers-color-scheme: dark) {
+        .stApp {
+            background-color: #1a1a1a !important;
+        }
+        
+        /* Main content area - REMOVED SPACE */
+        .main . block-container {
+            background-color: #1a1a1a !important;
+        }
+        
+        /* Tabs styling - REMOVED SPACES */
+        . stTabs [data-baseweb="tab-list"] {
+            background-color: #1a1a1a !important;
+        }
+        
+        .stTabs [data-baseweb="tab-panel"] {
+            background-color: #1a1a1a !important;
+        }
+        
+        h1, h2, h3 {
+            color: #ff6b6b !important;
+        }
+        
+        .stButton>button {
+            background-color: #2d2d2d !important;
+            color: #ffffff !important;
+            border: 2px solid #ff4444 !important;
+        }
+        
+        .stChatMessage {
+            background-color: #2d2d2d !important;
+            border: 1px solid #ff4444 !important;
+            color: #ffffff !important;
+        }
+        
+        .stChatMessage [data-testid="stMarkdownContainer"] {
+            color: #ffffff !important;
+        }
+        
+        /* Text areas and inputs */
+        .stTextArea textarea, .stTextInput input {
+            background-color: #2d2d2d !important;
+            color: #ffffff !important;
+        }
     }
-
-    /* 3. 按钮样式 (普通按钮) */
+    
+    /* Common styles for both modes */
     .stButton>button {
-        background-color: white !important;
-        color: #333 !important;
-        border: 2px solid #ffcccc !important;
         height: 80px;
         font-size: 20px !important;
         font-weight: bold !important;
         border-radius: 12px !important;
     }
     
-    /* 4. 针对 type="primary" 的红色按钮进行特训 */
-    /* 当你写 st.button(..., type="primary") 时会用到这个 */
     div[data-testid="stButton"] > button[kind="primary"] {
         background-color: #ff4444 !important;
         color: white !important;
@@ -51,13 +135,15 @@ st.markdown("""
         height: 3em;
         width: 100%;
         border-radius: 10px;
-        font-weight: bold;
-        font-size: 20px;
+        font-weight:  bold;
+        font-size:  20px;
     }
-    .stChatMessage {
+    
+    . stChatMessage {
         border-radius: 15px;
         padding: 10px;
     }
+    
     .emergency-button {
         background-color: #ff4444;
         color: white;
@@ -65,7 +151,7 @@ st.markdown("""
         border-radius: 15px;
         font-size: 24px;
         font-weight: bold;
-        margin:  10px;
+        margin: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
