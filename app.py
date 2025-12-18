@@ -527,11 +527,11 @@ with tab_emergency:
 # =============================================================================
 # TAB 2: MULTI-MODALITY FUSION
 # =============================================================================
-with tab_multi:
+with tab_multi: 
     st.header("🔀 Multi-Modality Fusion")
-    st.info(f"Combine multiple inputs for comprehensive analysis (Table: {TABLE_IDS['multi']})")
+    st.info(f"Combine multiple inputs for comprehensive analysis (Table:  {TABLE_IDS['multi']})")
     
-    col1, col2 = st.columns(2)
+    col1, col2 = st. columns(2)
     
     with col1:
         multi_text = st.text_area("Text Description:", height=150)
@@ -547,8 +547,8 @@ with tab_multi:
             type=["jpg", "png", "jpeg"],
             key="multi_photo"
         )
-        if multi_photo:
-            st. image(multi_photo, caption="Preview", width=200)
+        if multi_photo: 
+            st.image(multi_photo, caption="Preview", width=200)
     
     if st.button("🔀 Analyze Combined Data", use_container_width=True):
         if not (multi_text or multi_audio or multi_photo):
@@ -569,13 +569,13 @@ with tab_multi:
                         uri = extract_uri_from_response(upload_resp)
                         if uri:
                             multi_data["audio text"] = uri
-                    except Exception as e:
+                    except Exception as e: 
                         st.error(f"Audio upload failed: {e}")
                     finally: 
                         cleanup_temp_file(temp_audio)
             
             # Upload photo
-            if multi_photo:
+            if multi_photo: 
                 temp_photo = save_uploaded_file(multi_photo)
                 if temp_photo and jamai_client:
                     try:
@@ -584,12 +584,12 @@ with tab_multi:
                         if uri: 
                             multi_data["image"] = uri
                     except Exception as e:
-                        st. error(f"Photo upload failed:  {e}")
-                    finally: 
+                        st.error(f"Photo upload failed:  {e}")
+                    finally:  
                         cleanup_temp_file(temp_photo)
             
             # Submit to JamAI
-            if multi_data:
+            if multi_data: 
                 with st.spinner("Processing multi-modal data..."):
                     try:
                         if jamai_client: 
@@ -599,8 +599,9 @@ with tab_multi:
                             # Display results
                             st.success("✅ Multi-Modal Analysis Complete")
 
-                            description = get_field_value(data, "description", "No description available")
-                            summary = get_field_value(data, "summary", "No summary available")
+                            # Use correct field names from the API (same as Emergency tab)
+                            description = get_field_value(data, "input_summary", "No description available")
+                            summary = get_field_value(data, "diagonise", "No summary available")
 
                             # Create a more visual layout
                             st.markdown("### 🔍 Integrated Analysis")
@@ -609,16 +610,17 @@ with tab_multi:
                             col1, col2 = st.columns([2, 1])
 
                             with col1:
+                                # SWAPPED ORDER: Show diagnosis FIRST
                                 st.markdown("#### 🚨 Safety Recommendations")
                                 st.warning(summary)
                                 
+                                # THEN show situation assessment
                                 st.markdown("#### 📋 Situation Assessment")
                                 st.info(description)
-                            
 
                             with col2:
                                 st.markdown("#### 📊 Analysis Summary")
-                                st.metric("Input Types", len([k for k in multi_data. keys()]))
+                                st.metric("Input Types", len([k for k in multi_data.keys()]))
                                 st.metric("Confidence", "High ✅")
                                 st.button("📞 Emergency Services", type="primary", use_container_width=True)
                                 st.button("📍 Share Location", use_container_width=True)
@@ -629,7 +631,7 @@ with tab_multi:
                             st.error("JamAI client not available")
                     except Exception as e:
                         st.error(f"Multi-modal analysis error: {e}")
-
+                        
 # =============================================================================
 # TAB 3: AI CHAT ASSISTANT
 # =============================================================================
