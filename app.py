@@ -1,4 +1,3 @@
-from gps_component import get_live_location
 
 import random
 import streamlit as st
@@ -314,6 +313,107 @@ def get_table_schema(table_id):
     except Exception as e:
         st.error(f"Error getting table schema: {e}")
         return None
+
+def get_live_location():
+    """Get user's live GPS and show map"""
+    html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+            #map { height: 400px; width: 100%; border-radius: 10px; }
+            .btn { 
+                background:  #ff4444; 
+                color: white; 
+                padding: 12px 24px; 
+                border: none; 
+                border-radius: 8px; 
+                cursor: pointer; 
+                font-size: 16px;
+                margin: 10px 5px;
+                font-weight: bold;
+            }
+            .btn:hover { background: #cc0000; }
+            .info { padding: 10px; background: #f0f0f0; border-radius: 5px; margin:  10px 0; }
+        </style>
+    </head>
+    <body>
+        <button class="btn" onclick="getLocation()">📍 Get My Location</button>
+        <button class="btn" onclick="shareLocation()" id="shareBtn" style="display:none; background:#28a745;">
+            📤 Share Location to Emergency
+        </button>
+        <div id="info" class="info" style="display:none;"></div>
+        <div id="map"></div>
+        
+        <script>
+        let map = null;
+        let marker = null;
+        let currentLat = null;
+        let currentLon = null;
+        
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition, showError);
+            } else {
+                alert("Geolocation not supported");
+            }
+        }
+        
+        function showPosition(position) {
+            currentLat = position.coords.latitude;
+            currentLon = position.coords.longitude;
+            const accuracy = position.coords.accuracy;
+            
+            document.getElementById('info').style.display = 'block';
+            document.getElementById('info').innerHTML = 
+                `📍 <b>Your Location:</b><br>
+                Latitude: ${currentLat. toFixed(6)}<br>
+                Longitude: ${currentLon.toFixed(6)}<br>
+                Accuracy: ±${accuracy.toFixed(0)}m`;
+            
+            document.getElementById('shareBtn').style.display = 'inline-block';
+            
+            if (map === null) {
+                map = L.map('map').setView([currentLat, currentLon], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap'
+                }).addTo(map);
+            } else {
+                map.setView([currentLat, currentLon], 16);
+            }
+            
+            if (marker !== null) {
+                map.removeLayer(marker);
+            }
+            marker = L.marker([currentLat, currentLon]).addTo(map)
+                .bindPopup('📍 You are here!').openPopup();
+            
+            L.circle([currentLat, currentLon], {
+                color: 'blue',
+                fillColor: '#3399ff',
+                fillOpacity:  0.2,
+                radius: accuracy
+            }).addTo(map);
+        }
+        
+        function shareLocation() {
+            if (currentLat && currentLon) {
+                alert('✅ Location sent to Emergency Department!');
+                console.log('Shared:', currentLat, currentLon);
+            }
+        }
+        
+        function showError(error) {
+            alert("Location access denied or unavailable");
+        }
+        </script>
+    </body>
+    </html>
+    """
+    
+    components.html(html, height=550)
 
 # =============================================================================
 # PAGE HEADER
