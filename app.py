@@ -6,6 +6,7 @@ import time
 from jamaibase import JamAI
 from jamaibase.protocol import MultiRowAddRequest
 
+
 # =============================================================================
 # PAGE CONFIGURATION
 # =============================================================================
@@ -433,7 +434,7 @@ with tab_emergency:
                 map_path = os.path.join(current_path, "images", "usm_flood_map.jpg") 
                 
                 if os.path.exists(map_path):
-                    st.image(map_path, caption="🟢 ACTION: Follow the GREEN LINE to Higher Ground!", use_container_width=True)
+                    st.image(map_path, caption="🟢 ACTION: Follow the BLUE LINE to Higher Ground!", use_container_width=True)
                 else:
                     st.warning("Map loading...")
             
