@@ -341,7 +341,7 @@ def get_table_schema(table_id):
 # 2. 定义地图组件 (只给 Tab 1 用)
 # =============================================================================
 def get_live_location():
-    """Auto-get user's GPS and show route to nearest shelter"""
+    """Auto-get user's GPS with retry and manual fallback options"""
     html = """
     <! DOCTYPE html>
     <html>
@@ -349,7 +349,7 @@ def get_live_location():
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
-            #map { height: 500px; width:  100%; border-radius: 10px; margin:  10px 0; }
+            #map { height: 500px; width: 100%; border-radius: 10px; margin:  10px 0; }
             #status { 
                 padding: 15px; 
                 background:  #f8f9fa; 
@@ -358,25 +358,39 @@ def get_live_location():
                 text-align: center;
                 font-size: 16px;
             }
-            .loading {
-                color: #007bff;
+            . loading { color: #007bff; font-weight: bold; }
+            .success { color: #28a745; font-weight: bold; }
+            .error { color: #dc3545; font-weight: bold; }
+            .btn {
+                background:  #007bff;
+                color: white;
+                padding: 10px 20px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                margin: 5px;
                 font-weight: bold;
             }
-            .success {
-                color: #28a745;
-                font-weight:  bold;
-            }
-            . error {
-                color: #dc3545;
-                font-weight: bold;
-            }
+            .btn:hover { background: #0056b3; }
+            .btn-danger { background: #dc3545; }
+            . btn-danger:hover { background:  #c82333; }
+            #controls { text-align: center; margin: 10px 0; display: none; }
         </style>
     </head>
     <body>
         <div id="status" class="loading">📡 Getting your location...</div>
+        <div id="controls">
+            <button class="btn" onclick="retryLocation()">🔄 Retry GPS</button>
+            <button class="btn btn-danger" onclick="useFallback()">📍 Use USM Default Location</button>
+        </div>
         <div id="map"></div>
         
         <script>
+        let map = null;
+        let retryCount = 0;
+        const MAX_RETRIES = 2;
+        
         const shelters = [
             {name: "Dewan Utama USM", lat: 5.3565, lon: 100.2985, capacity: "500 people", type: "Main Hall"},
             {name: "Dewan Tuanku Syed Putra", lat: 5.3545, lon: 100.3005, capacity: "300 people", type: "Hall"},
@@ -413,28 +427,41 @@ def get_live_location():
             const currentLon = position.coords.longitude;
             const accuracy = position.coords.accuracy;
             
+            // Hide controls if showing
+            document.getElementById('controls').style.display = 'none';
+            
             // Update status
             document.getElementById('status').className = 'success';
             document.getElementById('status').innerHTML = `✅ Location acquired! Accuracy: ±${Math.round(accuracy)}m`;
             
+            displayMap(currentLat, currentLon, accuracy, true);
+        }
+        
+        function displayMap(currentLat, currentLon, accuracy, isRealGPS) {
+            // Clear existing map if any
+            if (map !== null) {
+                map.remove();
+            }
+            
             // Initialize map
-            const map = L. map('map').setView([currentLat, currentLon], 15);
+            map = L.map('map').setView([currentLat, currentLon], 15);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap',
                 maxZoom: 19
             }).addTo(map);
             
             // Add user marker (red)
+            const userPopupText = isRealGPS ? '<b>📍 You are here!</b>' : '<b>📍 Your approximate location</b><br>(Using default USM location)';
             L.marker([currentLat, currentLon], {
                 icon:  L.icon({
                     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
                     shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
                     iconSize: [25, 41],
                     iconAnchor: [12, 41],
-                    popupAnchor:  [1, -34],
+                    popupAnchor: [1, -34],
                     shadowSize: [41, 41]
                 })
-            }).addTo(map).bindPopup('<b>📍 You are here!</b>').openPopup();
+            }).addTo(map).bindPopup(userPopupText).openPopup();
             
             // Add accuracy circle
             L.circle([currentLat, currentLon], {
@@ -468,10 +495,10 @@ def get_live_location():
                         shadowSize: [41, 41]
                     })
                 }).addTo(map).bindPopup(`
-                    <b>🏢 ${nearestShelter.name}</b><br>
+                    <b>🏢 ${nearestShelter. name}</b><br>
                     Type: ${nearestShelter. type}<br>
                     Distance: ${(minDistance / 1000).toFixed(2)} km<br>
-                    Est. Walk:  ${Math.round(minDistance / 83)} min
+                    Est. Walk: ${Math.round(minDistance / 83)} min
                 `);
                 
                 // Draw curved path
@@ -497,7 +524,7 @@ def get_live_location():
                     distance: minDistance,
                     distanceKm: (minDistance / 1000).toFixed(2),
                     distanceM: Math.round(minDistance),
-                    walkTime: Math.round(minDistance / 83),
+                    walkTime: Math. round(minDistance / 83),
                     capacity: nearestShelter.capacity,
                     type: nearestShelter.type
                 };
@@ -507,42 +534,90 @@ def get_live_location():
                     lat: currentLat,
                     lon: currentLon,
                     accuracy: accuracy,
-                    shelter: shelterData
+                    shelter: shelterData,
+                    gpsType: isRealGPS ? 'real' : 'fallback'
                 }, '*');
             }
         }
         
         function showError(error) {
             let message = '';
-            switch(error.code) {
-                case error.PERMISSION_DENIED: 
-                    message = '❌ Location access denied. Please enable location permissions. ';
+            let showControls = false;
+            
+            switch(error. code) {
+                case error.PERMISSION_DENIED:
+                    message = '❌ Location access denied. Please enable location permissions or use default location.';
+                    showControls = true;
                     break;
-                case error.POSITION_UNAVAILABLE:
+                case error. POSITION_UNAVAILABLE:
                     message = '❌ Location information unavailable. ';
+                    showControls = true;
                     break;
-                case error.TIMEOUT:
-                    message = '❌ Location request timed out. ';
+                case error.TIMEOUT: 
+                    if (retryCount < MAX_RETRIES) {
+                        retryCount++;
+                        message = `⏳ Location request timed out. Retrying (${retryCount}/${MAX_RETRIES})...`;
+                        document.getElementById('status').className = 'loading';
+                        document.getElementById('status').innerHTML = message;
+                        setTimeout(getLocation, 1000);
+                        return;
+                    } else {
+                        message = '❌ Location request timed out after multiple attempts.  Use options below.';
+                        showControls = true;
+                    }
                     break;
                 default:
-                    message = '❌ An unknown error occurred.';
+                    message = '❌ An unknown error occurred. ';
+                    showControls = true;
             }
+            
             document.getElementById('status').className = 'error';
             document.getElementById('status').innerHTML = message;
+            
+            if (showControls) {
+                document. getElementById('controls').style.display = 'block';
+            }
         }
         
-        // Auto-start GPS on load
-        window.onload = function() {
+        function getLocation() {
             if (navigator.geolocation) {
-                navigator.geolocation. getCurrentPosition(showPosition, showError, {
+                document.getElementById('status').className = 'loading';
+                document.getElementById('status').innerHTML = '📡 Getting your location...';
+                
+                navigator.geolocation.getCurrentPosition(showPosition, showError, {
                     enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge:  0
+                    timeout: 15000,  // 15 seconds
+                    maximumAge: 0
                 });
             } else {
                 document.getElementById('status').className = 'error';
                 document.getElementById('status').innerHTML = '❌ Geolocation is not supported by your browser.';
+                document.getElementById('controls').style.display = 'block';
             }
+        }
+        
+        function retryLocation() {
+            retryCount = 0;
+            document.getElementById('controls').style.display = 'none';
+            getLocation();
+        }
+        
+        function useFallback() {
+            // Use USM School of Computer Sciences as default location
+            const fallbackLat = 5.3540;
+            const fallbackLon = 100.3015;
+            const fallbackAccuracy = 500;  // 500m radius
+            
+            document.getElementById('status').className = 'success';
+            document.getElementById('status').innerHTML = '📍 Using default USM location (School of Computer Sciences)';
+            document.getElementById('controls').style.display = 'none';
+            
+            displayMap(fallbackLat, fallbackLon, fallbackAccuracy, false);
+        }
+        
+        // Auto-start GPS on load
+        window.onload = function() {
+            getLocation();
         };
         </script>
     </body>
@@ -550,16 +625,17 @@ def get_live_location():
     """
     
     # Single render
-    component_value = components.html(html, height=600)
+    component_value = components.html(html, height=650)
     
     # Store GPS data when received
     if component_value:
         if isinstance(component_value, dict):
             st.session_state.emergency_location = {
-                'lat': component_value.get('lat'),
+                'lat':  component_value.get('lat'),
                 'lon': component_value.get('lon'),
                 'accuracy': component_value.get('accuracy'),
-                'shelter': component_value.get('shelter')
+                'shelter': component_value.get('shelter'),
+                'gps_type': component_value.get('gpsType', 'real')
             }
     
     return component_value
