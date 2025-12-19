@@ -340,15 +340,15 @@ def get_table_schema(table_id):
 def get_live_location():
     """Get user's live GPS and show map with REAL shelter locations"""
     html = """
-    <! DOCTYPE html>
+    <!DOCTYPE html>
     <html>
     <head>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
-            #map { height:  400px; width: 100%; border-radius: 10px; }
+            #map { height: 400px; width: 100%; border-radius: 10px; }
             .btn { 
-                background:   #ff4444; 
+                background:  #ff4444; 
                 color: white; 
                 padding: 12px 24px; 
                 border: none; 
@@ -377,8 +377,9 @@ def get_live_location():
         let marker = null;
         let currentLat = null;
         let currentLon = null;
+        let nearestShelterData = null;
         
-        // REAL SHELTER LOCATIONS (USM Penang area)
+        // REAL SHELTER LOCATIONS
         const shelters = [
             {name: "Dewan Utama USM", lat: 5.3565, lon: 100.2985, capacity: "500 people", type: "Main Hall"},
             {name: "Dewan Tuanku Syed Putra", lat: 5.3545, lon: 100.3005, capacity: "300 people", type: "Hall"},
@@ -388,16 +389,8 @@ def get_live_location():
             {name: "Desasiswa Restu", lat: 5.3620, lon: 100.3010, capacity: "Higher Ground", type: "Dormitory"}
         ];
         
-        function getLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(showPosition, showError);
-            } else {
-                alert("Geolocation not supported");
-            }
-        }
-        
         function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // Earth radius in meters
+            const R = 6371e3;
             const φ1 = lat1 * Math.PI / 180;
             const φ2 = lat2 * Math. PI / 180;
             const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -408,15 +401,22 @@ def get_live_location():
                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
             const c = 2 * Math. atan2(Math.sqrt(a), Math.sqrt(1-a));
             
-            return R * c; // Distance in meters
+            return R * c;
+        }
+        
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation. getCurrentPosition(showPosition, showError);
+            } else {
+                alert("Geolocation not supported");
+            }
         }
         
         function showPosition(position) {
-            currentLat = position. coords.latitude;
+            currentLat = position.coords.latitude;
             currentLon = position.coords.longitude;
             const accuracy = position.coords.accuracy;
             
-            // Create map
             if (map === null) {
                 map = L.map('map').setView([currentLat, currentLon], 15);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -426,7 +426,6 @@ def get_live_location():
                 map.setView([currentLat, currentLon], 15);
             }
             
-            // Add user marker (RED)
             if (marker !== null) {
                 map.removeLayer(marker);
             }
@@ -434,13 +433,11 @@ def get_live_location():
                 icon: L.icon({
                     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
                     iconSize: [25, 41],
-                    iconAnchor: [12, 41],
+                    iconAnchor:  [12, 41],
                     popupAnchor: [1, -34]
                 })
-            }).addTo(map)
-                .bindPopup('<b>📍 You are here! </b>').openPopup();
+            }).addTo(map).bindPopup('<b>📍 You are here!</b>').openPopup();
             
-            // Add accuracy circle
             L.circle([currentLat, currentLon], {
                 color: 'red',
                 fillColor: '#f03',
@@ -448,12 +445,10 @@ def get_live_location():
                 radius: accuracy
             }).addTo(map);
             
-            // Find nearest shelter
             let nearestShelter = null;
             let minDistance = Infinity;
             
-            // Add all shelter markers (GREEN)
-            shelters.forEach(shelter => {
+            shelters. forEach(shelter => {
                 const distance = calculateDistance(currentLat, currentLon, shelter.lat, shelter.lon);
                 
                 if (distance < minDistance) {
@@ -471,42 +466,60 @@ def get_live_location():
                 }).addTo(map);
                 
                 shelterMarker.bindPopup(`
-                    <b>🏢 ${shelter.name}</b><br>
+                    <b>🏢 ${shelter. name}</b><br>
                     Type: ${shelter.type}<br>
                     Capacity: ${shelter.capacity}<br>
                     Distance: ${(distance / 1000).toFixed(2)} km
                 `);
             });
             
-            // Draw route to nearest shelter
             if (nearestShelter) {
                 L.polyline([
                     [currentLat, currentLon],
-                    [nearestShelter.lat, nearestShelter.lon]
+                    [nearestShelter. lat, nearestShelter. lon]
                 ], {
                     color: 'blue',
                     weight: 4,
                     opacity: 0.7,
-                    dashArray: '10, 10'
-                }).addTo(map).bindPopup('Route to nearest shelter');
+                    dashArray:  '10, 10'
+                }).addTo(map);
+                
+                // Store nearest shelter data
+                nearestShelterData = {
+                    name: nearestShelter.name,
+                    distance: minDistance,
+                    distanceKm: (minDistance / 1000).toFixed(2),
+                    distanceM: Math.round(minDistance),
+                    walkTime: Math.round(minDistance / 83),
+                    capacity: nearestShelter.capacity,
+                    type: nearestShelter.type
+                };
             }
             
-            // Show info
             document.getElementById('info').style.display = 'block';
             document.getElementById('info').innerHTML = 
-                `📍 <b>Your Location:</b><br>
+                `📍 <b>Your Location: </b><br>
                 Latitude: ${currentLat.toFixed(6)}<br>
-                Longitude: ${currentLon.toFixed(6)}<br>
+                Longitude: ${currentLon. toFixed(6)}<br>
                 Accuracy: ±${accuracy. toFixed(0)}m`;
             
-            // Show nearest shelter info
             if (nearestShelter) {
                 document.getElementById('shelterInfo').style.display = 'block';
-                document.getElementById('shelterInfo').innerHTML = 
+                document. getElementById('shelterInfo').innerHTML = 
                     `🏢 <b>Nearest Shelter:  ${nearestShelter.name}</b><br>
-                    📏 Distance: ${(minDistance / 1000).toFixed(2)} km (${Math.round(minDistance)}m)<br>
+                    📏 Distance: ${nearestShelterData.distanceKm} km (${nearestShelterData.distanceM}m)<br>
                     👥 Capacity: ${nearestShelter.capacity}<br>
-                    ⏱️ Est. Walk Time: ${Math.round(minDistance / 83)} minutes`;
+                    ⏱️ Est. Walk Time: ${nearestShelterData.walkTime} minutes`;
+            }
+            
+            // Store data in localStorage for Streamlit to access
+            localStorage.setItem('gps_lat', currentLat);
+            localStorage.setItem('gps_lon', currentLon);
+            localStorage.setItem('gps_accuracy', accuracy);
+            if (nearestShelterData) {
+                localStorage.setItem('shelter_name', nearestShelterData.name);
+                localStorage. setItem('shelter_distance', nearestShelterData.distanceM);
+                localStorage.setItem('shelter_walk_time', nearestShelterData.walkTime);
             }
             
             document.getElementById('shareBtn').style.display = 'inline-block';
@@ -514,6 +527,14 @@ def get_live_location():
         
         function shareLocation() {
             if (currentLat && currentLon) {
+                // Send data to Streamlit
+                window.parent.postMessage({
+                    type: 'streamlit: setComponentValue',
+                    lat: currentLat,
+                    lon: currentLon,
+                    shelter:  nearestShelterData
+                }, '*');
+                
                 alert('✅ Location sent to Emergency Department!');
             }
         }
@@ -526,7 +547,19 @@ def get_live_location():
     </html>
     """
     
-    components.html(html, height=650)
+    # Return the component and capture the value
+    component_value = components.html(html, height=650)
+    
+    # Store in session state if data is received
+    if component_value:
+        if isinstance(component_value, dict):
+            st.session_state.emergency_location = {
+                'lat': component_value. get('lat'),
+                'lon': component_value.get('lon'),
+                'shelter': component_value.get('shelter')
+            }
+    
+    return component_value
 # =============================================================================
 # 2. 定义地图组件 (只给 Tab 1 用)
 # =============================================================================
