@@ -317,15 +317,15 @@ def get_table_schema(table_id):
 def get_live_location():
     """Get user's live GPS and show map with REAL shelter locations"""
     html = """
-    <! DOCTYPE html>
+    <!DOCTYPE html>
     <html>
     <head>
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
         <style>
-            #map { height:  400px; width: 100%; border-radius: 10px; }
+            #map { height: 400px; width: 100%; border-radius: 10px; }
             .btn { 
-                background:   #ff4444; 
+                background:  #ff4444; 
                 color: white; 
                 padding: 12px 24px; 
                 border: none; 
@@ -354,8 +354,9 @@ def get_live_location():
         let marker = null;
         let currentLat = null;
         let currentLon = null;
+        let nearestShelterData = null;
         
-        // REAL SHELTER LOCATIONS (USM Penang area)
+        // REAL SHELTER LOCATIONS
         const shelters = [
             {name: "Dewan Utama USM", lat: 5.3565, lon: 100.2985, capacity: "500 people", type: "Main Hall"},
             {name: "Dewan Tuanku Syed Putra", lat: 5.3545, lon: 100.3005, capacity: "300 people", type: "Hall"},
@@ -365,16 +366,8 @@ def get_live_location():
             {name: "Desasiswa Restu", lat: 5.3620, lon: 100.3010, capacity: "Higher Ground", type: "Dormitory"}
         ];
         
-        function getLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(showPosition, showError);
-            } else {
-                alert("Geolocation not supported");
-            }
-        }
-        
         function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // Earth radius in meters
+            const R = 6371e3;
             const φ1 = lat1 * Math.PI / 180;
             const φ2 = lat2 * Math. PI / 180;
             const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -385,15 +378,22 @@ def get_live_location():
                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
             const c = 2 * Math. atan2(Math.sqrt(a), Math.sqrt(1-a));
             
-            return R * c; // Distance in meters
+            return R * c;
+        }
+        
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation. getCurrentPosition(showPosition, showError);
+            } else {
+                alert("Geolocation not supported");
+            }
         }
         
         function showPosition(position) {
-            currentLat = position. coords.latitude;
+            currentLat = position.coords.latitude;
             currentLon = position.coords.longitude;
             const accuracy = position.coords.accuracy;
             
-            // Create map
             if (map === null) {
                 map = L.map('map').setView([currentLat, currentLon], 15);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -403,7 +403,6 @@ def get_live_location():
                 map.setView([currentLat, currentLon], 15);
             }
             
-            // Add user marker (RED)
             if (marker !== null) {
                 map.removeLayer(marker);
             }
@@ -411,13 +410,11 @@ def get_live_location():
                 icon: L.icon({
                     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
                     iconSize: [25, 41],
-                    iconAnchor: [12, 41],
+                    iconAnchor:  [12, 41],
                     popupAnchor: [1, -34]
                 })
-            }).addTo(map)
-                .bindPopup('<b>📍 You are here! </b>').openPopup();
+            }).addTo(map).bindPopup('<b>📍 You are here!</b>').openPopup();
             
-            // Add accuracy circle
             L.circle([currentLat, currentLon], {
                 color: 'red',
                 fillColor: '#f03',
@@ -425,12 +422,10 @@ def get_live_location():
                 radius: accuracy
             }).addTo(map);
             
-            // Find nearest shelter
             let nearestShelter = null;
             let minDistance = Infinity;
             
-            // Add all shelter markers (GREEN)
-            shelters.forEach(shelter => {
+            shelters. forEach(shelter => {
                 const distance = calculateDistance(currentLat, currentLon, shelter.lat, shelter.lon);
                 
                 if (distance < minDistance) {
@@ -448,42 +443,60 @@ def get_live_location():
                 }).addTo(map);
                 
                 shelterMarker.bindPopup(`
-                    <b>🏢 ${shelter.name}</b><br>
+                    <b>🏢 ${shelter. name}</b><br>
                     Type: ${shelter.type}<br>
                     Capacity: ${shelter.capacity}<br>
                     Distance: ${(distance / 1000).toFixed(2)} km
                 `);
             });
             
-            // Draw route to nearest shelter
             if (nearestShelter) {
                 L.polyline([
                     [currentLat, currentLon],
-                    [nearestShelter.lat, nearestShelter.lon]
+                    [nearestShelter. lat, nearestShelter. lon]
                 ], {
                     color: 'blue',
                     weight: 4,
                     opacity: 0.7,
-                    dashArray: '10, 10'
-                }).addTo(map).bindPopup('Route to nearest shelter');
+                    dashArray:  '10, 10'
+                }).addTo(map);
+                
+                // Store nearest shelter data
+                nearestShelterData = {
+                    name: nearestShelter.name,
+                    distance: minDistance,
+                    distanceKm: (minDistance / 1000).toFixed(2),
+                    distanceM: Math.round(minDistance),
+                    walkTime: Math.round(minDistance / 83),
+                    capacity: nearestShelter.capacity,
+                    type: nearestShelter.type
+                };
             }
             
-            // Show info
             document.getElementById('info').style.display = 'block';
             document.getElementById('info').innerHTML = 
-                `📍 <b>Your Location:</b><br>
+                `📍 <b>Your Location: </b><br>
                 Latitude: ${currentLat.toFixed(6)}<br>
-                Longitude: ${currentLon.toFixed(6)}<br>
+                Longitude: ${currentLon. toFixed(6)}<br>
                 Accuracy: ±${accuracy. toFixed(0)}m`;
             
-            // Show nearest shelter info
             if (nearestShelter) {
                 document.getElementById('shelterInfo').style.display = 'block';
-                document.getElementById('shelterInfo').innerHTML = 
+                document. getElementById('shelterInfo').innerHTML = 
                     `🏢 <b>Nearest Shelter:  ${nearestShelter.name}</b><br>
-                    📏 Distance: ${(minDistance / 1000).toFixed(2)} km (${Math.round(minDistance)}m)<br>
+                    📏 Distance: ${nearestShelterData.distanceKm} km (${nearestShelterData.distanceM}m)<br>
                     👥 Capacity: ${nearestShelter.capacity}<br>
-                    ⏱️ Est. Walk Time: ${Math.round(minDistance / 83)} minutes`;
+                    ⏱️ Est. Walk Time: ${nearestShelterData.walkTime} minutes`;
+            }
+            
+            // Store data in localStorage for Streamlit to access
+            localStorage.setItem('gps_lat', currentLat);
+            localStorage.setItem('gps_lon', currentLon);
+            localStorage.setItem('gps_accuracy', accuracy);
+            if (nearestShelterData) {
+                localStorage.setItem('shelter_name', nearestShelterData.name);
+                localStorage. setItem('shelter_distance', nearestShelterData.distanceM);
+                localStorage.setItem('shelter_walk_time', nearestShelterData.walkTime);
             }
             
             document.getElementById('shareBtn').style.display = 'inline-block';
@@ -491,6 +504,14 @@ def get_live_location():
         
         function shareLocation() {
             if (currentLat && currentLon) {
+                // Send data to Streamlit
+                window.parent.postMessage({
+                    type: 'streamlit: setComponentValue',
+                    lat: currentLat,
+                    lon: currentLon,
+                    shelter:  nearestShelterData
+                }, '*');
+                
                 alert('✅ Location sent to Emergency Department!');
             }
         }
@@ -503,7 +524,19 @@ def get_live_location():
     </html>
     """
     
-    components.html(html, height=650)
+    # Return the component and capture the value
+    component_value = components.html(html, height=650)
+    
+    # Store in session state if data is received
+    if component_value:
+        if isinstance(component_value, dict):
+            st.session_state.emergency_location = {
+                'lat': component_value. get('lat'),
+                'lon': component_value.get('lon'),
+                'shelter': component_value.get('shelter')
+            }
+    
+    return component_value
 # =============================================================================
 # PAGE HEADER
 # =============================================================================
@@ -523,38 +556,38 @@ st.divider()
 with st.sidebar:
     st. subheader("📍 Your Live Location")
     
-    # Initialize session state for GPS
-    if 'gps_shared' not in st.session_state:
-        st.session_state.gps_shared = False
+    # Initialize session state properly
+    if 'emergency_location' not in st.session_state:
+        st.session_state.emergency_location = None
     
-    # Display GPS component
-    get_live_location()
+    # Get GPS location
+    location_data = get_live_location()
     
-    # Manual check if user wants to share (alternative method)
-    st.markdown("---")
-    
-    # Manual location input as backup
-    with st.expander("🔧 Manual Location Entry"):
-        manual_lat = st.number_input("Latitude", value=5.3567, format="%.6f", key="manual_lat")
-        manual_lon = st.number_input("Longitude", value=100.3013, format="%.6f", key="manual_lon")
-        
-        if st.button("📤 Use Manual Location"):
-            st.session_state.emergency_location = {
-                'lat': manual_lat,
-                'lon': manual_lon,
-                'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
-            }
-            st.success("✅ Manual location saved!")
-    
-    # Show saved location if available
-    if 'emergency_location' in st. session_state:
+    # Display saved location status
+    if st. session_state.emergency_location:
         loc = st.session_state.emergency_location
-        st.success("✅ Location Ready!")
-        st.caption(f"📍 {loc['lat']:.6f}, {loc['lon']:.6f}")
+        
+        # Safely check if loc is a dict
+        if isinstance(loc, dict):
+            lat = loc.get('lat')
+            lon = loc.get('lon')
+            shelter = loc.get('shelter')
+            
+            if lat and lon: 
+                st.success("✅ GPS Location Saved!")
+                st.caption(f"📍 {lat:. 6f}, {lon:.6f}")
+                
+                if shelter and isinstance(shelter, dict):
+                    shelter_name = shelter.get('name', 'N/A')
+                    shelter_dist = shelter.get('distanceM', 'N/A')
+                    st.info(f"🏢 Nearest:  {shelter_name}\n📏 {shelter_dist}m away")
+        else:
+            st.info("📍 Click 'Get My Location' above")
+    else:
+        st.info("📍 Click 'Get My Location' to start")
     
     st.divider()
-    st.success("🟢 System Online:  Connected to Help Center")
-
+    st.success("🟢 System Online:  Connected to Help Center")   
 # =============================================================================
 # MAIN TABS
 # =============================================================================
@@ -620,47 +653,150 @@ with tab_emergency:
             # 红色大按钮
             submit_emergency = st.form_submit_button("🚨 CONFIRM & REQUEST HELP", use_container_width=True)
         
+        # if submit_emergency:
+        #     # --- 🎬 第一秒：心理安抚 (Reassurance) ---
+        #     st.success("✅ REPORT SENT TO Help Centre! Rescue team notified.")
+        #     st.toast("🚨 Alert sent to nearest police station!", icon="🚓")
+
+        #     # --- 🎬 第二秒：逃生指引 (Guidance) ---
+        #     if emergency_selected == "Flood":
+        #         st.divider()
+        #         st.error("🚨 IMMEDIATE ACTION: Here is your evacuation route.")
+                
+        #         # 仪表盘
+        #         st.subheader("📡 Real-time Analysis")
+        #         m1, m2, m3 = st.columns(3)
+        #         with m1:
+        #             st.metric(label="Water Level", value="CRITICAL ⚠️", delta="Rising (+15cm)")
+        #         with m2:
+        #             st.metric(label="Nearest Shelter", value="Dewan Utama", delta="500m")
+        #         with m3:
+        #             st.metric(label="Est. Evac Time", value="8 mins", delta="Fastest Route")
+
+        #         # 战术地图
+        #         st.subheader("🗺️ Recommended Evacuation Route")
+        #         current_path = os.path.dirname(os.path.abspath(__file__))
+        #         map_path = os.path.join(current_path, "images", "usm_flood_map.jpg") 
+                
+        #         if os.path.exists(map_path):
+        #             st.image(map_path, caption="🟢 ACTION: Follow the BLUE LINE to Higher Ground!", use_container_width=True)
+        #         else:
+        #             st.warning("Map loading...")
+            
+        #     # --- 🎬 后台处理：静默发送给 AI ---
+        #     emergency_data = {}
+        #     if emergency_text:
+        #         emergency_data["text"] = f"[{emergency_selected}] {emergency_text}"
+            
+        #     if emergency_data and jamai_client:
+        #         try:
+        #             table_id = TABLE_IDS["text"]
+        #             response = add_table_row(table_id, emergency_data)
+        #             data = parse_response_data(response)
+        #         except Exception as e:
+        #             print(f"Background upload failed: {e}")
+        # In TAB 1:  EMERGENCY RESPONSE section, replace the flood handling code: 
+
         if submit_emergency:
-            # --- 🎬 第一秒：心理安抚 (Reassurance) ---
-            st.success("✅ REPORT SENT TO Help Centre! Rescue team notified.")
+            st.success("✅ REPORT SENT TO Help Centre!  Rescue team notified.")
             st.toast("🚨 Alert sent to nearest police station!", icon="🚓")
 
-            # --- 🎬 第二秒：逃生指引 (Guidance) ---
+            # Safely get shelter data from session state
+            emergency_location = st.session_state.get('emergency_location')
+            shelter_data = None
+            
+            if emergency_location and isinstance(emergency_location, dict):
+                shelter_data = emergency_location.get('shelter')
+            
             if emergency_selected == "Flood":
                 st.divider()
-                st.error("🚨 IMMEDIATE ACTION: Here is your evacuation route.")
+                st.error("🚨 IMMEDIATE ACTION:  Here is your evacuation route.")
                 
-                # 仪表盘
+                # Real-time Analysis Dashboard
                 st.subheader("📡 Real-time Analysis")
                 m1, m2, m3 = st.columns(3)
+                
                 with m1:
                     st.metric(label="Water Level", value="CRITICAL ⚠️", delta="Rising (+15cm)")
-                with m2:
-                    st.metric(label="Nearest Shelter", value="Dewan Utama", delta="500m")
-                with m3:
-                    st.metric(label="Est. Evac Time", value="8 mins", delta="Fastest Route")
-
-                # 战术地图
-                st.subheader("🗺️ Recommended Evacuation Route")
-                current_path = os.path.dirname(os.path.abspath(__file__))
-                map_path = os.path.join(current_path, "images", "usm_flood_map.jpg") 
                 
-                if os.path.exists(map_path):
-                    st.image(map_path, caption="🟢 ACTION: Follow the BLUE LINE to Higher Ground!", use_container_width=True)
+                with m2:
+                    # Use REAL shelter data from GPS
+                    if shelter_data and isinstance(shelter_data, dict):
+                        shelter_name = shelter_data.get('name', 'Dewan Utama')
+                        shelter_distance = shelter_data.get('distanceM', 500)
+                        st.metric(
+                            label="Nearest Shelter", 
+                            value=shelter_name, 
+                            delta=f"{shelter_distance}m away"
+                        )
+                    else:
+                        st.metric(label="Nearest Shelter", value="Checking.. .", delta="Use GPS in sidebar")
+                
+                with m3:
+                    # Use REAL walk time from GPS
+                    if shelter_data and isinstance(shelter_data, dict):
+                        walk_time = shelter_data.get('walkTime', 8)
+                        st.metric(
+                            label="Est.  Evac Time", 
+                            value=f"{walk_time} mins", 
+                            delta="Fastest Route"
+                        )
+                    else:
+                        st.metric(label="Est. Evac Time", value="Calculating...", delta="GPS Required")
+                
+                # Show the GPS MAP
+                st.subheader("🗺️ Your Live Evacuation Route")
+                
+                if emergency_location and emergency_location.get('lat'):
+                    # Display the live GPS map with route
+                    st.info("📍 This map shows YOUR current location and route to nearest shelter")
+                    get_live_location()
                 else:
-                    st.warning("Map loading...")
+                    # Fallback to static map if GPS not available
+                    st.warning("⚠️ GPS not detected. Please click 'Get My Location' in the sidebar first!")
+                    
+                    # Still show a map option
+                    if st.button("📍 Enable GPS Now", type="primary"):
+                        st.info("👈 Check the sidebar to enable GPS location")
+                    
+                    # Show static map as backup
+                    current_path = os.path.dirname(os.path.abspath(__file__))
+                    map_path = os.path.join(current_path, "images", "usm_flood_map.jpg") 
+                    
+                    if os.path.exists(map_path):
+                        st.image(map_path, caption="🟢 Default evacuation route (Enable GPS for personalized route)", use_container_width=True)
             
-            # --- 🎬 后台处理：静默发送给 AI ---
+            # Prepare emergency data
             emergency_data = {}
-            if emergency_text:
-                emergency_data["text"] = f"[{emergency_selected}] {emergency_text}"
             
+            if emergency_location and emergency_location.get('lat'):
+                # GPS data available
+                lat = emergency_location.get('lat', 'N/A')
+                lon = emergency_location.get('lon', 'N/A')
+                
+                if shelter_data and isinstance(shelter_data, dict):
+                    shelter_name = shelter_data.get('name', 'Unknown')
+                    shelter_dist = shelter_data.get('distanceM', 'N/A')
+                    emergency_text = f"""CRITICAL ALERT:  {emergency_selected} at USM Campus
+        GPS: {lat}°N, {lon}°E
+        Nearest Shelter: {shelter_name} ({shelter_dist}m away)
+        Immediate assistance required."""
+                else:
+                    emergency_text = f"""CRITICAL ALERT: {emergency_selected} at USM Campus
+        GPS: {lat}°N, {lon}°E
+        Immediate assistance required."""
+            else:
+                # No GPS data
+                emergency_text = f"CRITICAL ALERT: {emergency_selected} reported at USM Main Campus.  Immediate assistance required.  Coordinates: 5.3567° N, 100.3013° E."
+            
+            emergency_data["text"] = emergency_text
+            
+            # Send to JamAI backend
             if emergency_data and jamai_client:
                 try:
                     table_id = TABLE_IDS["text"]
                     response = add_table_row(table_id, emergency_data)
-                    data = parse_response_data(response)
-                except Exception as e:
+                except Exception as e: 
                     print(f"Background upload failed: {e}")
 # =============================================================================
 # TAB 2: MULTI-MODALITY FUSION
