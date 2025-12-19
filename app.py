@@ -410,16 +410,9 @@ def get_live_location():
             return R * c;
         }
         
-        function createCurvedPath(start, end, numPoints = 20) {
-            const points = [];
-            for (let i = 0; i <= numPoints; i++) {
-                const t = i / numPoints;
-                const curve = Math.sin(t * Math.PI) * 0.002;
-                const lat = start[0] + (end[0] - start[0]) * t + curve;
-                const lon = start[1] + (end[1] - start[1]) * t - curve;
-                points.push([lat, lon]);
-            }
-            return points;
+        function createStraightPath(start, end) {
+            // Just return start and end points for a straight line
+            return [start, end];
         }
         
         function showPosition(position) {
@@ -501,12 +494,14 @@ def get_live_location():
                     Est. Walk: ${Math.round(minDistance / 83)} min
                 `);
                 
-                // Draw curved path
-                const path = createCurvedPath([currentLat, currentLon], [nearestShelter.lat, nearestShelter.lon]);
-                L.polyline(path, {
+                // Draw straight path to nearest shelter
+                L.polyline([
+                    [currentLat, currentLon],
+                    [nearestShelter.lat, nearestShelter.lon]
+                ], {
                     color: '#2962FF',
                     weight: 4,
-                    opacity: 0.7,
+                    opacity: 0.8,
                     dashArray: '10, 5',
                     lineCap: 'round'
                 }).addTo(map);
